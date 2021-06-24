@@ -1,17 +1,17 @@
+import { Action, State } from './main';
 import { createNote, Note } from './note';
 import { NoteUi } from './note-ui';
-import { Searcher } from './searcher';
+import { StateContainer } from './state';
 
 export class NotesUi {
+  #state: StateContainer<State, Action>;
   #container: HTMLElement;
   #notesContainer: HTMLElement;
-  #notes: Map<string, Note> = new Map();
-  #noteUis: Map<string, NoteUi> = new Map();
-  #searcher = new Searcher();
-  #listeners: Array<() => void> = [];
+  #children: Map<string, { ui: NoteUi; container: HTMLElement }> = new Map();
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, state: StateContainer<State, Action>) {
     this.#container = container;
+    this.#state = state;
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -22,48 +22,49 @@ export class NotesUi {
         title = prompt('Title for the new note') || '';
       }
 
-      this.add(createNote({ title }));
+      state.dispatch({
+        type: 'add',
+        payload: [createNote({ title })],
+      });
     });
 
     this.#notesContainer = document.createElement('div');
     this.#notesContainer.classList.add('notes-container');
 
     this.#container.append(this.#notesContainer, button);
+
+    this.#state.subscribe(this.#change);
   }
 
-  get notes() {
-    return Array.from(this.#notes.values());
-  }
-
-  add(...notes: Note[]) {
-    const containers: HTMLElement[] = [];
-
-    notes.forEach((note) => {
-      const container = document.createElement('div');
-      containers.push(container);
-
-      const ui = new NoteUi(container, note, this, this.#searcher);
-      this.#noteUis.set(note.title, ui);
-      this.#notes.set(note.title, note);
+  #change = (nextState: State) => {
+    this.#children.forEach((child, key) => {
+      if (nextState.notes.every(({ title }) => title !== key)) {
+        child.ui.destroy();
+        this.#notesContainer.removeChild(child.container);
+        this.#children.delete(key);
+      }
     });
 
-    this.#notesContainer.append(...containers);
-    this.#change();
-  }
+    // assuming the order doesn't change
+    nextState.notes.forEach((note) => {
+      const existing = this.#children.get(note.title);
 
-  update(note: Note) {
-    const ui = this.#noteUis.get(note.title)!;
-    this.#notes.set(note.title, note);
-    ui.update(note);
-    this.#searcher.update(note)
-    this.#change();
-  }
+      if (!existing) {
+        this.#createChild(note);
+      }
+    });
+  };
 
-  onChange(callback: () => void) {
-    this.#listeners.push(callback);
-  }
+  #createChild(note: Note) {
+    const container = document.createElement('div');
+    const ui = new NoteUi(container, note, this.#state);
 
-  #change() {
-    this.#listeners.forEach((listener) => listener());
+    this.#notesContainer.appendChild(container);
+
+    const child = { ui, container };
+
+    this.#children.set(note.title, child);
+
+    return child;
   }
 }

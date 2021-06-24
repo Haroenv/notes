@@ -1,7 +1,7 @@
-import { NotesUi } from './notes-ui';
+import { Note } from './note';
 import { Trie } from './searcher';
 
-export function benchmark(notes: NotesUi) {
+export function benchmark(notes: Note[]) {
   function inner(query: string, title: string, trie: Trie) {
     console.group(`${query} in ${title}`);
 
@@ -17,9 +17,9 @@ export function benchmark(notes: NotesUi) {
     console.groupEnd();
   }
 
-  for (const { title } of notes.notes) {
-    for (const note of notes.notes) {
-      const trie = new Trie(note);
+  for (const { title } of notes) {
+    for (const note of notes) {
+      const trie = new Trie(note.content);
       inner(title, note.title, trie);
     }
   }

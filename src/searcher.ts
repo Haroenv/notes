@@ -7,29 +7,32 @@ type TrieNode = {
 const separator = /\b/;
 
 export class Trie {
-  #note: Note;
+  #text: string;
   #trie: TrieNode = {};
 
-  constructor(note: Note) {
-    const words = note.content.split(separator);
-    this.#note = note;
+  constructor(text: string) {
+    this.#text = text;
 
+    const words = Trie.#splitWords(Trie.#normalize(text));
     words.forEach((word) => {
-      if (!separator.test(word)) {
-        return;
-      }
-
       this.#insertWord(Trie.#split(word));
     });
   }
 
   static #normalize(word: string): string {
-    return word.toLocaleLowerCase();
+    return word
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLocaleLowerCase();
+  }
+
+  static #splitWords(sentence: string): string[] {
+    return sentence.split(separator).filter((word) => separator.test(word));
   }
 
   static #split(word: string): string[] {
     // todo: use grapheme instead of characters, for letters that are > 1 character, like 🇧🇪
-    return Trie.#normalize(word).split('');
+    return word.split('');
   }
 
   #insertWord(tokens: string[], subtrie = this.#trie): void {
@@ -62,15 +65,19 @@ export class Trie {
     return false;
   }
 
+  /**
+   * Checks whether all words in the query are present in the content
+   */
   includes(query: string) {
-    return this.#_includes(Trie.#split(query));
+    const words = Trie.#splitWords(Trie.#normalize(query));
+    return words.every((word) => this.#_includes(Trie.#split(word)));
   }
 
   // technically this is faster in the cases of this project.
   // I assume this might be due to object creation and prototype chain, but did not investigate deeply.
   // I still chose #_includes, since I wanted to implement a real search index.
   _includesWithoutTrie(query: string) {
-    return this.#note.content.includes(Trie.#normalize(query));
+    return this.#text.includes(Trie.#normalize(query));
   }
 }
 
@@ -84,7 +91,7 @@ export class Searcher {
   update(note: Note): Trie {
     // could be more efficient and update only the changed parts of the trie
     // but that's overkill for now
-    const trie = new Trie(note);
+    const trie = new Trie(note.content);
     this.#tries.set(note.title, trie);
     return trie;
   }
@@ -98,11 +105,17 @@ export class Searcher {
     return this.update(note);
   }
 
-  findLinks(target: Note, notes: Note[]) {
-    const trie = this.#getTrie(target);
+  get tries() {
+    return this.#tries;
+  }
 
+  findLinks(target: Note, notes: Note[]) {
     return notes.filter((note) => {
-      return trie.includes(note.title);
+      if (note.title === target.title) {
+        return false;
+      }
+      const trie = this.#getTrie(note);
+      return trie.includes(target.title);
     });
   }
 }
