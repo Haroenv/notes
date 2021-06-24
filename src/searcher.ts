@@ -105,17 +105,30 @@ export class Searcher {
     return this.update(note);
   }
 
-  get tries() {
-    return this.#tries;
-  }
-
-  findLinks(target: Note, notes: Note[]) {
+  /**
+   * get all notes that link to the target
+   */
+  findIncomingLinks(target: Note, notes: Note[]) {
     return notes.filter((note) => {
       if (note.title === target.title) {
         return false;
       }
       const trie = this.#getTrie(note);
       return trie.includes(target.title);
+    });
+  }
+
+  /**
+   * get all links present in target
+   */
+  findOutgoingLinks(target: Note, notes: Note[]) {
+    const trie = this.#getTrie(target);
+
+    return notes.filter((note) => {
+      if (note.title === target.title) {
+        return false;
+      }
+      return trie.includes(note.title);
     });
   }
 }

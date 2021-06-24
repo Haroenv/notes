@@ -32,6 +32,7 @@ export class NoteUi {
   #container: HTMLElement;
   #explicitLinksDOM: HTMLElement;
   #implicitLinksDOM: HTMLElement;
+  #referencesDOM: HTMLElement;
   #textareaDOM: HTMLTextAreaElement;
 
   constructor(
@@ -63,31 +64,45 @@ export class NoteUi {
 
     this.#explicitLinksDOM = createLinksDOM('Links', note.links);
     this.#implicitLinksDOM = document.createElement('section');
+    this.#referencesDOM = document.createElement('section');
 
     article.append(
       title,
       this.#textareaDOM,
       this.#explicitLinksDOM,
-      this.#implicitLinksDOM
+      this.#implicitLinksDOM,
+      this.#referencesDOM
     );
 
     this.#container.append(article);
 
-    this.#updateImplicitLinksDOM(state.state);
-    this.#unsubscribe = state.subscribe(this.#updateImplicitLinksDOM);
+    this.#updateLinks(state.state);
+    this.#unsubscribe = state.subscribe(this.#updateLinks);
   }
 
   destroy() {
     this.#unsubscribe();
   }
 
-  #updateImplicitLinksDOM = (state: State) => {
-    const links = state.searcher
-      .findLinks(this.#note, state.notes)
-      .map((note) => note.title);
+  #updateLinks = (state: State) => {
+    {
+      const references = state.searcher
+        .findIncomingLinks(this.#note, state.notes)
+        .map((note) => note.title);
 
-    const linksDOM = createLinksDOM('References', links);
-    this.#implicitLinksDOM.replaceWith(linksDOM);
-    this.#implicitLinksDOM = linksDOM;
+      const linksDOM = createLinksDOM('References', references);
+      this.#referencesDOM.replaceWith(linksDOM);
+      this.#referencesDOM = linksDOM;
+    }
+
+    {
+      const links = state.searcher
+        .findOutgoingLinks(this.#note, state.notes)
+        .map((note) => note.title);
+
+      const linksDOM = createLinksDOM('Implicit links', links);
+      this.#implicitLinksDOM.replaceWith(linksDOM);
+      this.#implicitLinksDOM = linksDOM;
+    }
   };
 }

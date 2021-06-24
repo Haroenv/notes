@@ -17,6 +17,7 @@ html {
 
 article {
   border: 0.3em solid var(--border, hsl(0, 0%, 91%));
+  border-radius: 1em;
   padding: 1em;
   height: 100%;
 }
@@ -27,4 +28,25 @@ article:target {
 
 textarea {
   width: 100%;
+  font: inherit;
+  border: 1px solid black;
+  border-radius: 1em;
+  padding: 1em;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px black;
+}
+
+button {
+  position: fixed;
+  bottom: 1em;
+  right: 1em;
+  border: .2em solid black;
+  background: white;
+  padding: 1em;
+  font: inherit;
+  border-radius: 1em;
 }
